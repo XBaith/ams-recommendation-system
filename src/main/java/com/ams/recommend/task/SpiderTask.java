@@ -27,20 +27,6 @@ public class SpiderTask {
                 Property.getKafkaProperties("tf-idf")
         );
 
-//        DataStream<List<String>> tfidfWords = env.addSource(consumer)
-//                .map(new SpiderMapFunction())
-//                .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<SpiderArticle>(Time.seconds(1)) {
-//                    @Override
-//                    public long extractTimestamp(SpiderArticle element) {
-//                        return element.getTimestamp() * 1000;   //转化为毫秒
-//                    }
-//                }).timeWindowAll(Time.minutes(1), Time.seconds(5))
-//                .apply(new SpiderWindowFunction())
-//                .keyBy(WindowedArticle::getWindowEnd)
-//                .process(new TFIDFProcessFunction(5));
-
-//        tfidfWords.addSink(new TFIDFSink());
-
         env.addSource(consumer)
                 .map(new SpiderMapFunction())
                 .map(new TFIDFMapFunction(15))
@@ -67,15 +53,6 @@ public class SpiderTask {
             article.setContent(content);
 
             return article;
-        }
-    }
-
-    private static class SpiderWindowFunction implements AllWindowFunction<SpiderArticle, WindowedArticle, TimeWindow> {
-
-        @Override
-        public void apply(TimeWindow window, Iterable<SpiderArticle> spiderArticle, Collector<WindowedArticle> out) throws Exception {
-            SpiderArticle article = spiderArticle.iterator().next();
-            out.collect(new WindowedArticle(article.getArticleId(), article.getTimestamp(), window.getEnd()));
         }
     }
 
