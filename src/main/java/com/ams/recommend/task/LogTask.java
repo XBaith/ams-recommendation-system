@@ -11,10 +11,14 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.util.Collector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
 public class LogTask {
+
+    private static final Logger logger = LoggerFactory.getLogger(LogTask.class);
 
     public static void main(String[] args) throws Exception {
         ParameterTool params = ParameterTool.fromArgs(args);
@@ -24,7 +28,10 @@ public class LogTask {
         env.enableCheckpointing(5000L);  //设置每5秒设置自动生成checkpoint
 
         Properties kafkaProp = Property.getKafkaProperties("log");  //设置消费组id
-        FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<>("log", new SimpleStringSchema(), kafkaProp);
+        FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<>("log",
+                new SimpleStringSchema(),
+                kafkaProp
+        );
 
         DataStream<Log> logs = env
                 .addSource(consumer)
@@ -58,6 +65,7 @@ public class LogTask {
                 HBaseClient.put(tableName, rowKey, "l"
                         , "act", log.getAction());
 
+                logger.info(log.toString());
                 out.collect(log);
             }
         }

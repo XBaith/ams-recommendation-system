@@ -38,4 +38,12 @@ public class Log {
         this.action = action;
     }
 
+    @Override
+    public String toString() {
+        return "Log" +
+                "userId='" + userId + '\'' +
+                ", articleId='" + articleId + '\'' +
+                ", time=" + time +
+                ", action='" + action + '\'';
+    }
 }

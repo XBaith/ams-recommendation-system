@@ -2,20 +2,17 @@ package com.ams.recommend.task;
 
 import com.ams.recommend.client.MySQLClient;
 import com.ams.recommend.pojo.SpiderArticle;
-import com.ams.recommend.pojo.WindowedArticle;
 import com.ams.recommend.tfidf.TFIDFMapFunction;
 import com.ams.recommend.tfidf.TFIDFSink;
 import com.ams.recommend.util.Property;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.flink.util.Collector;
 
 public class SpiderTask {
+
+    private static final Integer KEYWORD_SIZE = 20; //爬去文章筛选的关键字个数
 
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -29,7 +26,7 @@ public class SpiderTask {
 
         env.addSource(consumer)
                 .map(new SpiderMapFunction())
-                .map(new TFIDFMapFunction(15))
+                .map(new TFIDFMapFunction(KEYWORD_SIZE))
                 .addSink(new TFIDFSink());
 
         env.execute("Spider for tf-idf task");

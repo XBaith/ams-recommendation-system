@@ -1,8 +1,8 @@
 package com.ams.recommend.client;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import com.ams.recommend.pojo.User;
 import com.ams.recommend.util.Property;
-import org.apache.flink.api.java.DataSet;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -45,10 +45,10 @@ public class MySQLClient {
      * @param articleId 文章id
      * @return 文章属性
      */
-    public static ResultSet getArticleById(String articleId) {
+    public static ResultSet getUserPortraitById(String articleId) {
         ResultSet article = null;
         try(Connection conn = dataSource.getConnection()) {
-            PreparedStatement pst = conn.prepareStatement("SELECT * FROM article WHERE id = ?");
+            PreparedStatement pst = conn.prepareStatement("SELECT author, title, keyword FROM article WHERE id = ?");
             pst.setString(1, articleId);
             article = pst.executeQuery();
 
@@ -64,12 +64,20 @@ public class MySQLClient {
      * @param userId 用户id
      * @return 用户属性
      */
-    public static ResultSet getUserById(String userId) {
-        ResultSet user = null;
+    public static User getUserById(String userId) {
+        User user = null;
         try(Connection conn = dataSource.getConnection()) {
             PreparedStatement pst = conn.prepareStatement("SELECT * FROM user WHERE id = ?");
             pst.setString(1, userId);
-            user = pst.executeQuery();
+            ResultSet rs = pst.executeQuery();
+            if(rs != null) {
+                rs.next();
+                user.setUserId(userId);
+                user.setSex(rs.getInt("sex"));
+                user.setAge(rs.getInt("age"));
+                user.setJob(rs.getString("job"));
+                user.setEducation(rs.getString("education"));
+            }
 
             pst.close();
         }catch (SQLException e) {

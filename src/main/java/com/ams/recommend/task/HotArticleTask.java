@@ -1,14 +1,11 @@
 package com.ams.recommend.task;
 
-import com.ams.recommend.client.MySQLClient;
 import com.ams.recommend.pojo.HotArticle;
 import com.ams.recommend.pojo.Log;
 import com.ams.recommend.util.LogUtil;
 import com.ams.recommend.util.Property;
-import org.apache.commons.net.ntp.TimeStamp;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
@@ -16,13 +13,10 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
-import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
 import org.apache.flink.streaming.api.functions.windowing.WindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
-import org.apache.flink.streaming.api.windowing.windows.Window;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.redis.RedisSink;
 import org.apache.flink.streaming.connectors.redis.common.config.FlinkJedisPoolConfig;
@@ -33,11 +27,15 @@ import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
 
 public class HotArticleTask {
 
     private final static Logger logger = LoggerFactory.getLogger(HotArticleTask.class);
+    private final static int HOTSIZE = 20;  //热榜的文章数
 
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -64,10 +62,10 @@ public class HotArticleTask {
                         return log.getTime() * 1000;    //转化为毫秒
                     }
                 }).keyBy(log -> log.getArticleId())
-                .timeWindow(Time.seconds(40), Time.seconds(20))
+                .timeWindow(Time.seconds(60), Time.seconds(20))
                 .aggregate(new CountAgg(), new WindowResultFunction())
                 .keyBy(hot -> hot.getWindowEnd())
-                .process(new HotArticleProcessFunction(3))
+                .process(new HotArticleProcessFunction(HOTSIZE))
                 .flatMap(new TopFlatMapFunction())
         .addSink(new RedisSink<>(redisConf, new HotArticleSink()));
 

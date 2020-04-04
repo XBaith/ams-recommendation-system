@@ -2,6 +2,7 @@ package com.ams.recommend.client;
 
 import com.ams.recommend.util.Property;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -134,6 +136,29 @@ public class HBaseClient {
             e.printStackTrace();
         }
         return res;
+    }
+
+    /**
+     * 获取一整行
+     * @return
+     */
+    public static Map<String, String> getRow(String tableName, String rowKey) {
+        Map<String, String> kv = new HashMap<>();
+        TableName tName = TableName.valueOf(tableName);
+        try(Connection conn = ConnectionFactory.createConnection(conf)) {
+            Table table = conn.getTable(tName);
+            Get get = new Get(Bytes.toBytes(rowKey));
+            Result rs = table.get(get);
+            for (Cell cell : rs.listCells()){
+                String key = Bytes.toString(cell.getQualifierArray(),cell.getQualifierOffset(),cell.getQualifierLength());
+                String value = Bytes.toString(cell.getValueArray(),cell.getValueOffset(),cell.getValueLength());
+                kv.put(key, value);
+            }
+            table.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return kv;
     }
 
     public static int getColumnSize(String tableName, String rowKey, String family) {

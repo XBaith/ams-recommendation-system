@@ -22,13 +22,10 @@ public class TFTest {
         Map<String, Double> tfs = WordTokenizerUtil.getFrequency(sb.toString());
         List<Map.Entry<String, Double>> tflist = new LinkedList<>();
         tflist.addAll(tfs.entrySet());
-        Collections.sort(tflist, new Comparator<Map.Entry<String, Double>>() {
-            @Override
-            public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
-                if(o1.getValue() > o2.getValue()) return -1;
-                else if(o1.getValue() < o2.getValue()) return 1;
-                else return 0;
-            }
+        Collections.sort(tflist, (o1, o2) -> {
+            if(o1.getValue() > o2.getValue()) return -1;
+            else if(o1.getValue() < o2.getValue()) return 1;
+            else return 0;
         });
 
         for(Map.Entry<String, Double> tf : tflist) {

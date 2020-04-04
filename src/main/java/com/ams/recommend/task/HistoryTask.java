@@ -11,6 +11,11 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 
 public class HistoryTask {
 
+    //文章历史信息表
+    private final static String ARTICLE_HIS_TABLE_NAME =  Property.getStrValue("table.article.history.name");
+    //用户历史信息表
+    private final static String USER_HIS_TABLE_NAME =  Property.getStrValue("table.user.history.name");
+
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -26,13 +31,13 @@ public class HistoryTask {
                     if(null != log) {
                         //文章相对应的用户操作更新1次记录
                         HBaseClient.addOrUpdateColumn(
-                                Property.getStrValue("table.article.history.name"),
+                                ARTICLE_HIS_TABLE_NAME,
                                 log.getArticleId(),
                                 "p",
                                 log.getUserId());
                         //用户对游览的文章的操作次数加1
                         HBaseClient.addOrUpdateColumn(
-                                Property.getStrValue("table.user.history.name"),
+                                USER_HIS_TABLE_NAME,
                                 log.getUserId(),
                                 "p",
                                 log.getArticleId());

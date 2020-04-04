@@ -4,6 +4,7 @@ import com.ams.recommend.client.HBaseClient;
 import com.ams.recommend.pojo.SpiderArticle;
 import com.ams.recommend.util.Property;
 import com.ams.recommend.util.WordTokenizerUtil;
+import com.hankcs.hanlp.mining.word2vec.Word2VecTrainer;
 import org.apache.flink.api.common.functions.MapFunction;
 import scala.Tuple2;
 
@@ -31,21 +32,22 @@ public class TFIDFMapFunction implements MapFunction<SpiderArticle, SpiderArticl
         Map<String, Double> tf = WordTokenizerUtil.getFrequency(article.getContent());
         article.setTfMap(tf);
 
-        //查询包含词w的文章总数
         PriorityQueue<Tuple2<String, Double>> tfidfQueue = new PriorityQueue<>(keywordSize);
-
-        //先查看HBase中是否有对应的表
-        checkWordTable(tableName);
 
         //计算TF-IDF
         for(String word : tf.keySet()) {
+            //查询包含词word的文章总数
             int size = HBaseClient.getColumnSize(tableName, word, "a");
             if(size == 0) size = 1;
             Double TF = tf.get(word);
             Double IDF = Math.log10(totalArticleSize / size);
-            tfidfQueue.add(new Tuple2<String, Double>(word, TF * IDF));
+            Double tfidf = TF * IDF;
+            tfidfQueue.add(new Tuple2<>(word, tfidf));
             //更新单词(rowKey)对应的文章列
             HBaseClient.addOrUpdateColumn(tableName, word, "a", article.getArticleId());
+            //更新文章中各个单词的tf,tfidf
+            HBaseClient.put("tfidf", article.getArticleId(), "tf", word, String.valueOf(tf));
+            HBaseClient.put("tfidf", article.getArticleId(), "ti", word, String.valueOf(tfidf));
         }
         article.setTfidf(tfidfQueue);
         //更新总文章数
@@ -54,10 +56,4 @@ public class TFIDFMapFunction implements MapFunction<SpiderArticle, SpiderArticl
         return article;
     }
 
-    private void checkWordTable(String tableName) {
-        if(!HBaseClient.existTable(tableName)) {
-            HBaseClient.createOrOverwriteTable(tableName, "a", "c");
-            HBaseClient.createRow(tableName, "articleSize", "c", "count", String.valueOf(0L));
-        }
-    }
 }
