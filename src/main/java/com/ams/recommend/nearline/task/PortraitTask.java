@@ -1,17 +1,27 @@
-package com.ams.recommend.task;
+package com.ams.recommend.nearline.task;
 
 import com.ams.recommend.client.HBaseClient;
 import com.ams.recommend.client.MySQLClient;
-import com.ams.recommend.pojo.Log;
-import com.ams.recommend.pojo.User;
+import com.ams.recommend.common.pojo.Log;
+import com.ams.recommend.common.pojo.User;
+import com.ams.recommend.util.Constants;
 import com.ams.recommend.util.LogUtil;
 import com.ams.recommend.util.Property;
+import com.ams.recommend.util.WordTokenizerUtil;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.common.state.StateTtlConfig;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
@@ -23,13 +33,13 @@ import java.sql.ResultSet;
  */
 public class PortraitTask {
 
-    private final static String ARTICLE_PORTRAIT_TABLENAME = Property.getStrValue("table.portrait.article.name");
-    private final static String USER_PORTRAIT_TABLENAME = Property.getStrValue("table.portrait.user.name");
+    private final static Long TTL = 180L;  //判定用户喜欢文章的阅读时间 默认3min
 
     private static final OutputTag<Log> outputTag = new OutputTag<Log>("side-output"){};
 
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
         DataStream<String> logSource = env.addSource(new FlinkKafkaConsumer<>(
                 "log",
@@ -37,18 +47,26 @@ public class PortraitTask {
                 Property.getKafkaProperties("portrait")
         ));
 
-        SingleOutputStreamOperator<Log> logs = logSource.process(new LogProcessFunction());
+        SingleOutputStreamOperator<Log> logs = logSource
+                .process(new LogProcessFunction())
+                .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<Log>(Time.seconds(10)) {
+                    @Override
+                    public long extractTimestamp(Log element) {
+                        return element.getTime();
+                    }
+                });
 
-        logs.addSink(new ArticlePortraitSink());
+        logs.keyBy("articleId")
+                .addSink(new ArticlePortraitSink());
 
         logs.getSideOutput(outputTag)
+                .keyBy("userID")
                 .addSink(new UserPortraitSink());
 
         env.execute("Portrait Task");
     }
 
     private static class LogProcessFunction extends ProcessFunction<String, Log> {
-
         @Override
         public void processElement(String log, Context ctx, Collector<Log> out) throws Exception {
             Log logEntry = LogUtil.toLogEntry(log);
@@ -56,7 +74,6 @@ public class PortraitTask {
             //侧输出到另外一条Stream
             ctx.output(outputTag, logEntry);
         }
-
     }
 
     /**
@@ -69,30 +86,30 @@ public class PortraitTask {
             String articleId = log.getArticleId();
             String userId = log.getUserId();
             //性别
-            HBaseClient.put(ARTICLE_PORTRAIT_TABLENAME,
+            HBaseClient.put(Constants.ARTICLE_PORTRAIT_TABLE,
                     articleId,
-                    "s",
+                    "sex",
                     userId,
                     String.valueOf(user.getSex())
             );
-            //年龄
-            HBaseClient.put(ARTICLE_PORTRAIT_TABLENAME,
+            //年龄段
+            HBaseClient.put(Constants.ARTICLE_PORTRAIT_TABLE,
                     articleId,
-                    "a",
+                    "age",
                     userId,
-                    String.valueOf(user.getAge())
+                    Constants.rangeAge(user.getAge())
             );
             //职业
-            HBaseClient.put(ARTICLE_PORTRAIT_TABLENAME,
+            HBaseClient.put(Constants.ARTICLE_PORTRAIT_TABLE,
                     articleId,
-                    "j",
+                    "job",
                     userId,
                     user.getJob()
             );
             //学历
-            HBaseClient.put(ARTICLE_PORTRAIT_TABLENAME,
+            HBaseClient.put(Constants.ARTICLE_PORTRAIT_TABLE,
                     articleId,
-                    "e",
+                    "edu",
                     userId,
                     user.getEducation()
             );
@@ -101,7 +118,7 @@ public class PortraitTask {
 
     /**
      * 统计用户画像信息
-     * 作者，频道，主题，关键字
+     * 作者（文章来源），频道，标题，关键字
      */
     private static class UserPortraitSink implements SinkFunction<Log> {
         @Override
@@ -118,34 +135,35 @@ public class PortraitTask {
                 String userId = log.getUserId();
                 String articleId = log.getArticleId();
                 //作者
-                HBaseClient.put(USER_PORTRAIT_TABLENAME,
+                HBaseClient.put(Constants.USER_PORTRAIT_TABLE,
                         userId,
-                        "a",
+                        "aut",
                         articleId,
                         author
                 );
                 //频道
-                HBaseClient.put(USER_PORTRAIT_TABLENAME,
+                HBaseClient.put(Constants.USER_PORTRAIT_TABLE,
                         userId,
-                        "c",
+                        "cha",
                         articleId,
                         String.valueOf(channelId)
                 );
                 //标题
-                HBaseClient.put(USER_PORTRAIT_TABLENAME,
+                HBaseClient.put(Constants.USER_PORTRAIT_TABLE,
                         userId,
-                        "t",
+                        "tit",
                         articleId,
-                        title
+                        WordTokenizerUtil.segment(title)
                 );
                 //关键字
-                HBaseClient.put(USER_PORTRAIT_TABLENAME,
+                HBaseClient.put(Constants.USER_PORTRAIT_TABLE,
                         userId,
-                        "k",
+                        "kw",
                         articleId,
                         keyword
                 );
             }
         }
     }
+
 }

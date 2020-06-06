@@ -1,14 +1,16 @@
-package com.ams.recommend.task;
+package com.ams.recommend.nearline.task;
 
 import com.ams.recommend.client.HBaseClient;
-import com.ams.recommend.pojo.Log;
+import com.ams.recommend.common.pojo.Log;
 import com.ams.recommend.util.LogUtil;
 import com.ams.recommend.util.Property;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
@@ -21,11 +23,9 @@ public class LogTask {
     private static final Logger logger = LoggerFactory.getLogger(LogTask.class);
 
     public static void main(String[] args) throws Exception {
-        ParameterTool params = ParameterTool.fromArgs(args);
-
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.getConfig().setGlobalJobParameters(params);
-        env.enableCheckpointing(5000L);  //设置每5秒设置自动生成checkpoint
+        env.enableCheckpointing(600000L);  //设置每10分钟设置自动生成checkpoint
+        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
         Properties kafkaProp = Property.getKafkaProperties("log");  //设置消费组id
         FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<>("log",
@@ -35,7 +35,13 @@ public class LogTask {
 
         DataStream<Log> logs = env
                 .addSource(consumer)
-                .flatMap(new LogFlatMapFunction());
+                .flatMap(new LogFlatMapFunction())  //设置每5分钟生成一个水位线
+                .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<Log>(Time.minutes(15)) {
+                    @Override
+                    public long extractTimestamp(Log element) {
+                        return element.getTime();
+                    }
+                });
 
         env.execute("Collect log task");
     }

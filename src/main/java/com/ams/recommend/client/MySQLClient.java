@@ -1,7 +1,7 @@
 package com.ams.recommend.client;
 
 import com.alibaba.druid.pool.DruidDataSource;
-import com.ams.recommend.pojo.User;
+import com.ams.recommend.common.pojo.User;
 import com.ams.recommend.util.Property;
 
 import java.sql.Connection;

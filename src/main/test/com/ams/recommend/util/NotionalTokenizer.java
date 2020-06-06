@@ -1,4 +1,4 @@
-package com.ams.recommend;
+package com.ams.recommend.util;
 import com.hankcs.hanlp.HanLP;
 import com.hankcs.hanlp.dictionary.stopword.CoreStopWordDictionary;
 import com.hankcs.hanlp.dictionary.stopword.Filter;
@@ -99,6 +99,9 @@ public class NotionalTokenizer
     }
 
     public static void main(String[] args) {
-        System.out.println(NotionalTokenizer.segment("我草你妈的，傻逼东西，死妈玩意，没手没脚的废物啊。"));
+        System.out.println(
+                NotionalTokenizer.segment("Hi，大家好，这里是本人的新博客基地，" +
+                        "之前的博客是在CSDN平台，由于各种原因长时间没有更新，同时想要有更加独立的，" +
+                        "更简洁界面的博客，因此将地址转到本站。"));
     }
 }

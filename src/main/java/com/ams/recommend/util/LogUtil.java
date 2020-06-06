@@ -1,6 +1,6 @@
 package com.ams.recommend.util;
 
-import com.ams.recommend.pojo.Log;
+import com.ams.recommend.common.pojo.Log;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

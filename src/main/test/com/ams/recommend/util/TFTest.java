@@ -1,4 +1,4 @@
-package com.ams.recommend;
+package com.ams.recommend.util;
 
 import com.ams.recommend.util.WordTokenizerUtil;
 
@@ -19,7 +19,7 @@ public class TFTest {
             sb.append(in.next());
         }
 
-        Map<String, Double> tfs = WordTokenizerUtil.getFrequency(sb.toString());
+        Map<String, Double> tfs = WordTokenizerUtil.tf(sb.toString());
         List<Map.Entry<String, Double>> tflist = new LinkedList<>();
         tflist.addAll(tfs.entrySet());
         Collections.sort(tflist, (o1, o2) -> {

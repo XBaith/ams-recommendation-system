@@ -1,18 +1,22 @@
-package com.ams.recommend.task;
+package com.ams.recommend.nearline.task.tfidf;
 
 import com.ams.recommend.client.MySQLClient;
-import com.ams.recommend.pojo.SpiderArticle;
-import com.ams.recommend.tfidf.TFIDFMapFunction;
-import com.ams.recommend.tfidf.TFIDFSink;
+import com.ams.recommend.common.pojo.SpiderArticle;
+import com.ams.recommend.nearline.task.HotArticleTask;
 import com.ams.recommend.util.Property;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SpiderTask {
 
-    private static final Integer KEYWORD_SIZE = 20; //爬去文章筛选的关键字个数
+    private final static Logger logger = LoggerFactory.getLogger(HotArticleTask.class);
+    private static final Integer KEYWORD_SIZE = 10; //爬去文章筛选的关键字个数
 
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -26,6 +30,13 @@ public class SpiderTask {
 
         env.addSource(consumer)
                 .map(new SpiderMapFunction())
+                .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<SpiderArticle>(Time.minutes(10)) {
+                    @Override
+                    public long extractTimestamp(SpiderArticle element) {
+                        logger.info("spider article watermark : " + element.getTimestamp());
+                        return element.getTimestamp();
+                    }
+                })
                 .map(new TFIDFMapFunction(KEYWORD_SIZE))
                 .addSink(new TFIDFSink());
 

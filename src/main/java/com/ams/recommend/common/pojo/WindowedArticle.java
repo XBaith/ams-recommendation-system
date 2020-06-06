@@ -1,4 +1,4 @@
-package com.ams.recommend.pojo;
+package com.ams.recommend.common.pojo;
 
 import java.util.HashMap;
 import java.util.Map;

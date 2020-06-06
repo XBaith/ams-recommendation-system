@@ -192,4 +192,25 @@ public class HBaseClient {
             e.printStackTrace();
         }
     }
+
+
+    /**
+     * 取出表中所有的key
+     * @param tableName
+     * @return
+     */
+    public static List<String> getAllKey(String tableName) throws IOException {
+        List<String> keys = new ArrayList<>();
+        try(Connection conn = ConnectionFactory.createConnection(conf)) {
+            Scan scan = new Scan();
+            Table table = conn.getTable(TableName.valueOf(tableName));
+            ResultScanner scanner = table.getScanner(scan);
+            for (Result r : scanner) {
+                keys.add(new String(r.getRow()));
+            }
+        }catch (IOException e) {
+            e.printStackTrace();
+        }
+        return keys;
+    }
 }

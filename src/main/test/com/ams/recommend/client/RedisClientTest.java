@@ -1,6 +1,5 @@
-package com.ams.recommend;
+package com.ams.recommend.client;
 
-import com.ams.recommend.client.RedisClient;
 import org.junit.Test;
 
 import java.util.List;
@@ -17,3 +16,4 @@ public class RedisClientTest {
     }
 
 }
+

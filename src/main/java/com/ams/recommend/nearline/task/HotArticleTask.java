@@ -1,7 +1,7 @@
-package com.ams.recommend.task;
+package com.ams.recommend.nearline.task;
 
-import com.ams.recommend.pojo.HotArticle;
-import com.ams.recommend.pojo.Log;
+import com.ams.recommend.common.pojo.HotArticle;
+import com.ams.recommend.common.pojo.Log;
 import com.ams.recommend.util.LogUtil;
 import com.ams.recommend.util.Property;
 import org.apache.flink.api.common.functions.AggregateFunction;
@@ -14,6 +14,7 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
 import org.apache.flink.streaming.api.functions.windowing.WindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -40,6 +41,7 @@ public class HotArticleTask {
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        env.enableCheckpointing(5000L);
 
         FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<String>(
                 "log",
@@ -55,9 +57,9 @@ public class HotArticleTask {
 
         env.addSource(consumer)
             .flatMap(new LogFlatMapFunction())
-                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<Log>() {
+                .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<Log>(Time.minutes(5)) {
                     @Override
-                    public long extractAscendingTimestamp(Log log) {
+                    public long extractTimestamp(Log log) {
                         logger.info("watermark : " + log.getTime() * 1000);
                         return log.getTime() * 1000;    //转化为毫秒
                     }

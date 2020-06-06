@@ -18,10 +18,10 @@ public class Property {
 			InputStreamReader inputStreamReader = new InputStreamReader(in, "UTF-8");
 			contextProperties.load(inputStreamReader);
 		} catch (IOException e) {
-			System.err.println(">>>ams-runtime-recommend-system<<< 资源文件加载失败!");
+			System.err.println("===[AMS-recommendation-system]=== 资源文件加载失败!");
 			e.printStackTrace();
 		}
-		System.out.println(">>>ams-runtime-recommend-system<<< 资源文件加载成功");
+		System.out.println("===[AMS-recommendation-system]=== 资源文件加载成功");
 	}
 
 	public static String getStrValue(String key) {

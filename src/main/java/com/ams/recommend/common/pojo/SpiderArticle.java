@@ -1,4 +1,6 @@
-package com.ams.recommend.pojo;
+package com.ams.recommend.common.pojo;
+
+import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,7 +12,7 @@ public class SpiderArticle {
     private long timestamp;
     private String content;
     private Map<String, Double> tfMap;
-    private PriorityQueue tfidf;
+    private PriorityQueue<Tuple2<String, Double>> tfidf;
 
     public SpiderArticle() {
         tfMap = new HashMap<>();
@@ -56,11 +58,11 @@ public class SpiderArticle {
         this.tfMap = tfMap;
     }
 
-    public PriorityQueue getTfidf() {
+    public PriorityQueue<Tuple2<String, Double>> getTfidf() {
         return tfidf;
     }
 
-    public void setTfidf(PriorityQueue tfidf) {
+    public void setTfidf(PriorityQueue<Tuple2<String, Double>> tfidf) {
         this.tfidf = tfidf;
     }
 }

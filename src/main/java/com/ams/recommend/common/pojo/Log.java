@@ -1,4 +1,4 @@
-package com.ams.recommend.pojo;
+package com.ams.recommend.common.pojo;
 
 /**
  * 日志实体
@@ -16,9 +16,7 @@ public class Log {
 
     public String getArticleId() { return articleId; }
 
-    public void setArticleId(String articleId) { this.articleId = articleId; }
-
-    public void setArticleId(int productId) {
+    public void setArticleId(String articleId) {
         this.articleId = articleId;
     }
 

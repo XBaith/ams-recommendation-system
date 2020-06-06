@@ -1,12 +1,12 @@
-package com.ams.recommend.tfidf;
+package com.ams.recommend.nearline.task.tfidf;
 
 import com.ams.recommend.client.HBaseClient;
-import com.ams.recommend.pojo.SpiderArticle;
+import com.ams.recommend.common.pojo.SpiderArticle;
+import com.ams.recommend.util.Constants;
 import com.ams.recommend.util.Property;
 import com.ams.recommend.util.WordTokenizerUtil;
-import com.hankcs.hanlp.mining.word2vec.Word2VecTrainer;
 import org.apache.flink.api.common.functions.MapFunction;
-import scala.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -15,7 +15,7 @@ public class TFIDFMapFunction implements MapFunction<SpiderArticle, SpiderArticl
 
     private final String tableName = Property.getStrValue("table.word.name");
     private int keywordSize;
-    private Long totalArticleSize = 1L;
+    private long totalArticleSize = 1L;
 
     public TFIDFMapFunction(int keywordSize) {
         if(keywordSize < 1) throw new IllegalArgumentException("keywords num should not less than 1.");
@@ -29,7 +29,7 @@ public class TFIDFMapFunction implements MapFunction<SpiderArticle, SpiderArticl
     @Override
     public SpiderArticle map(SpiderArticle article) throws Exception {
         //统计文章各个词的TF
-        Map<String, Double> tf = WordTokenizerUtil.getFrequency(article.getContent());
+        Map<String, Double> tf = WordTokenizerUtil.tf(article.getContent());
         article.setTfMap(tf);
 
         PriorityQueue<Tuple2<String, Double>> tfidfQueue = new PriorityQueue<>(keywordSize);
@@ -46,8 +46,8 @@ public class TFIDFMapFunction implements MapFunction<SpiderArticle, SpiderArticl
             //更新单词(rowKey)对应的文章列
             HBaseClient.addOrUpdateColumn(tableName, word, "a", article.getArticleId());
             //更新文章中各个单词的tf,tfidf
-            HBaseClient.put("tfidf", article.getArticleId(), "tf", word, String.valueOf(tf));
-            HBaseClient.put("tfidf", article.getArticleId(), "ti", word, String.valueOf(tfidf));
+            HBaseClient.put(Constants.ARTICLE_TFIDF_TABLE, article.getArticleId(), "tf", word, String.valueOf(tf));
+            HBaseClient.put(Constants.ARTICLE_TFIDF_TABLE, article.getArticleId(), "ti", word, String.valueOf(tfidf));
         }
         article.setTfidf(tfidfQueue);
         //更新总文章数
